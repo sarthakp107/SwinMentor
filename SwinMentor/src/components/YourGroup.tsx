@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {  FaUsers, FaComments, FaSearch, FaChevronRight } from "react-icons/fa";
+import { FaUsers, FaComments, FaSearch, FaChevronRight } from "react-icons/fa";
 import { supabase } from "../../supabase-client";
 import { useAuth } from "@/context/AuthContext";
 
@@ -17,54 +17,61 @@ const YourGroups: React.FC = () => {
   useEffect(() => {
     const fetchUnitGroups = async () => {
       setLoading(true);
-
+  
       // Fetch data from user_units, profile, and units tables with proper joins
       const { data, error } = await supabase
         .from("user_units")
         .select(`
           unit_id,
           profile_id,
-          profile:profile_id(display_name),  
-          units:unit_id(unit_name)  
-        `)
-        .eq("profile_id", user?.id);
-
+          profile:profile_id(display_name),
+          units:unit_id(unit_name)
+        `);
+  
       if (error) {
         console.error("Error fetching unit groups:", error);
         setLoading(false);
         return;
       }
-
+  
       if (!data || data.length === 0) {
         console.log("No data found");
         setLoading(false);
         return;
       }
-
+  
+      console.log("Fetched data:", data);  // Log fetched data
+  
       // Group users by unit_id, including their names
       const groupedUsers: Record<string, { unitName: string; members: { profileID: string; displayName: string }[] }> = {};
-
+  
       // Iterate through the data and group by unit_id
       data.forEach((item: any) => {
         const { unit_id, profile_id, profile, units } = item;
-
+  
         // Check if profile and unit are populated, otherwise skip
         if (!profile || !units) return;
-
+  
+        console.log(`Processing item: unit_id = ${unit_id}, profile_id = ${profile_id}, profile = ${profile.display_name}`);
+  
+        // If the unit_id group does not exist, create a new entry
         if (!groupedUsers[unit_id]) {
           groupedUsers[unit_id] = {
-            unitName: units.unit_name,
+            unitName: units.unit_name,  // Using the unit name here
             members: [],
           };
         }
-
-        // Push user with display_name to members array
+  
+        // Push the user with display_name to the members array
         groupedUsers[unit_id].members.push({
           profileID: profile_id,
           displayName: profile.display_name,
         });
       });
-
+  
+      // Log the grouped data to see how it's structured
+      console.log("Grouped users:", groupedUsers);
+  
       // Convert grouped data into an array of groups
       const groupsArray: Group[] = Object.entries(groupedUsers).map(
         ([unitID, { unitName, members }]) => ({
@@ -73,12 +80,19 @@ const YourGroups: React.FC = () => {
           members,
         })
       );
-      setGroups(groupsArray);
+  
+      // Log the final groups array
+      console.log("Final groups array:", groupsArray);
+  
+      setGroups(groupsArray);  // Set the grouped data to the state
       setLoading(false);
     };
-
+  
     fetchUnitGroups();
   }, [user]);
+  
+  
+  
 
   // Generate initials for avatar fallback
   const getInitials = (name: string) => {
@@ -151,13 +165,13 @@ const YourGroups: React.FC = () => {
         const hiddenCount = group.members.length - 5;
 
         return (
-          <div 
-            key={group.unitID} 
+          <div
+            key={group.unitID}
             className="relative overflow-hidden group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100"
           >
             {/* Top accent line with gradient */}
             <div className="h-1.5 w-full bg-gradient-to-r from-red-500 to-red-600"></div>
-            
+
             <div className="p-6">
               {/* Group title */}
               <div className="flex items-center mb-5">
@@ -182,19 +196,24 @@ const YourGroups: React.FC = () => {
                     >
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium"
-                        style={{ 
+                        style={{
                           backgroundColor: getMemberColor(member.profileID),
                           color: getMemberTextColor(member.profileID)
                         }}
                       >
-                        {getInitials(member.displayName)}
+                        {user?.user_metadata.avatar ? (
+                          <img src={user.user_metadata.avatar} alt="User Avatar" />
+                        ) : (
+                          getInitials(member.displayName)
+                        )}
+
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Show +X more if needed */}
                   {hasMoreMembers && (
-                    <div 
+                    <div
                       className="flex-shrink-0 -ml-2 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600"
                       style={{ zIndex: 45 - visibleMembers.length }}
                     >
@@ -215,11 +234,11 @@ const YourGroups: React.FC = () => {
                   Find Mentor
                 </button>
               </div>
-              
+
               {/* View details link */}
               <div className="mt-5 text-right">
                 <a href={`/groups/${group.unitID}`} className="inline-flex items-center text-xs font-medium text-red-600 hover:text-red-800 transition">
-                  View Unit Buddies 
+                  View Unit Buddies
                   <FaChevronRight className="ml-1 text-xs" />
                 </a>
               </div>
